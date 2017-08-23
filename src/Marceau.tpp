@@ -2,6 +2,8 @@
 //void handleWsMsg(char * msg){
 //  cmdProcessor.processMsg(msg);
 //}
+
+MarceauWifi wifi;
 #endif //ESP8266
 
 void sendSerialMsg(ArduinoJson::JsonObject &outMsg){
@@ -17,9 +19,12 @@ Marceau<CMD_COUNT>::Marceau(){
 
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::begin(){
-  this->initSettings();
   // Set up the commands
-  this->initCmds();
+  initCmds();
+  initSettings();
+#ifdef ESP8266
+  if(wifiEnabled) wifi.begin(&settings);
+#endif
 }
 
 template <uint8_t CMD_COUNT>
@@ -32,6 +37,15 @@ void Marceau<CMD_COUNT>::enableSerial(Stream &s){
 }
 
 template <uint8_t CMD_COUNT>
+void Marceau<CMD_COUNT>::enableWifi(){
+#ifdef ESP8266
+//  wifi.onMsg(handleWsMsg);
+//  p.addOutputHandler(wifi.sendWebSocketMsg);
+  wifiEnabled = true;
+#endif //ESP8266
+}
+
+template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::addCmd(const char cmd[], Fn func, bool immediate){
   p.addCmd(cmd, func, immediate);
 }
@@ -39,16 +53,6 @@ void Marceau<CMD_COUNT>::addCmd(const char cmd[], Fn func, bool immediate){
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::cmdComplete(){
   p.sendComplete();
-}
-
-template <uint8_t CMD_COUNT>
-void Marceau<CMD_COUNT>::enableWifi(){
-#ifdef ESP8266
-//  wifi.begin(&settings);
-//  wifi.onMsg(handleWsMsg);
-//  cmdProcessor.addOutputHandler(wifi.sendWebSocketMsg);
-//  wifiEnabled = true;
-#endif //ESP8266
 }
 
 template <uint8_t CMD_COUNT>
@@ -75,11 +79,11 @@ void Marceau<CMD_COUNT>::initSettings(){
   //settings.sta_fixednetmask = (uint32_t)IPAddress(255, 255, 255, 0);
   settings.sta_fixeddns1 = 0;
   settings.sta_fixeddns2 = 0;
-  //MirobotWifi::defautAPName(settings.ap_ssid);
+  MarceauWifi::defautAPName(settings.ap_ssid);
   settings.ap_pass[0] = 0;
   settings.discovery = true;
 #endif //ESP8266
-  saveSettings();
+  //saveSettings();
 }
 
 template <uint8_t CMD_COUNT>
@@ -96,6 +100,7 @@ void Marceau<CMD_COUNT>::saveSettings(){
 
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::initCmds(){
+  // Set up the built in commands
 }
 
 template <uint8_t CMD_COUNT>
@@ -139,9 +144,7 @@ void Marceau<CMD_COUNT>::checkReady(){
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::loop(){
 #ifdef ESP8266
-  if(wifiEnabled){
-    //wifi.run();
-  }
+  if(wifiEnabled) wifi.loop();
 #endif //ESP8266
   serialHandler();
   checkReady();

@@ -16,6 +16,7 @@ void setup(){
   marcel.addCmd("version", testImmediateFn, true);
   marcel.addCmd("delay", testDelayedFn, false);
   marcel.enableSerial(Serial);
+  marcel.enableWifi();
   marcel.begin();
 }
 
