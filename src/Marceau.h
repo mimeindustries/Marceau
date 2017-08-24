@@ -18,6 +18,7 @@
 
 typedef void (* Fn) (ArduinoJson::JsonObject &, ArduinoJson::JsonObject &);
 
+#ifdef ESP8266
 class wsHandler
 {
 public:
@@ -26,23 +27,26 @@ public:
 
 template <uint8_t CMD_COUNT>
 class Marceau: public wsHandler{
+#endif
+#ifdef AVR
+template <uint8_t CMD_COUNT>
+class Marceau{
+#endif
   public:
     Marceau();
     void begin();
     void enableSerial(Stream &s);
     void loop();
-    void enableWifi();
     void addCmd(const char cmd[], Fn func, bool immediate);
     void cmdComplete();
-    void handleWsMsg(char * msg);
     MarceauSettings settings;
     boolean blocking;
+#ifdef ESP8266
+    void enableWifi();
+    void handleWsMsg(char * msg);
+#endif
   private:
     void wait();
-#ifdef ESP8266
-    void networkNotifier();
-    void wifiScanNotifier();
-#endif
     void initSettings();
     void saveSettings();
     void version(char);
@@ -55,8 +59,12 @@ class Marceau: public wsHandler{
     bool wifiEnabled;
     bool serialEnabled;
     CmdProcessor<CMD_COUNT> p;
+#ifdef ESP8266
+    void networkNotifier();
+    void wifiScanNotifier();
     MarceauWeb webServer;
     MarceauWebSocket socketServer;
+#endif
 };
 
 #include "Marceau.tpp"

@@ -26,8 +26,10 @@ void Marceau<CMD_COUNT>::handleWsMsg(char * msg){
 template <uint8_t CMD_COUNT>
 Marceau<CMD_COUNT>::Marceau(){
   serialEnabled = false;
+#ifdef ESP8266
   wifiEnabled = false;
   handler = this;
+#endif
 }
 
 template <uint8_t CMD_COUNT>
@@ -56,14 +58,14 @@ void Marceau<CMD_COUNT>::enableSerial(Stream &s){
   serialEnabled = true;
 }
 
+#ifdef ESP8266
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::enableWifi(){
-#ifdef ESP8266
   socketServer.onMsg(handleWs);
   p.addOutputHandler(socketServer.sendWebSocketMsg);
   wifiEnabled = true;
-#endif //ESP8266
 }
+#endif //ESP8266
 
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::addCmd(const char cmd[], Fn func, bool immediate){
