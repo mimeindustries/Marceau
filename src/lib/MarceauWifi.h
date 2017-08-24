@@ -4,13 +4,14 @@
 #include "Arduino.h"
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
-//#include "lib/MirobotWeb.h"
+#include "lib/MarceauWeb.h"
 //#include "lib/MirobotWebSocket.h"
 #include "lib/MarceauSettings.h"
 #include <DNSServer.h>
 #include <Ticker.h>
 //#include "lib/Discovery.h"
 #include "lib/ArduinoJson/ArduinoJson.h"
+#include "lib/webFiles.h"
 
 typedef void (* dataHandler) (char *);
 
@@ -36,7 +37,7 @@ class MarceauWifi {
   private:
     bool enabled;
     static bool wifiScanRequested;
-    //MirobotWeb webServer;
+    MarceauWeb webServer;
     DNSServer dnsServer;
     void setupDNS();
     static void staCheck();

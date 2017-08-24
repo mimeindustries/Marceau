@@ -43,7 +43,7 @@ void MarceauWifi::begin(MarceauSettings * _settings){
   setupDNS();
 
   // Start the web server
-  //new MirobotWeb();
+  webServer.begin();
 
   // Start the WebSocket server
   //beginWebSocket();

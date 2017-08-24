@@ -5,6 +5,7 @@
 #include "lib/CmdProcessor.h"
 #include "lib/ArduinoJson/ArduinoJson.h"
 #include "lib/MarceauSettings.h"
+#include "lib/webFiles.h"
 #include <EEPROM.h>
 
 #ifdef ESP8266

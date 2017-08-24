@@ -18,7 +18,7 @@ bool CmdProcessor<CMD_COUNT>::addOutputHandler(jsonMsgHandler h){
 template <int CMD_COUNT>
 void CmdProcessor<CMD_COUNT>::addCmd(const char cmd[], Fn func, bool immediate){
   if (cmd_counter == CMD_COUNT) {
-    Serial.println(F("Too many commands defined"));
+    Serial.println("Too many commands defined");
     return;
   }
   _cmds[cmd_counter].cmd = cmd;
