@@ -133,19 +133,9 @@ void Marceau<CMD_COUNT>::serialHandler(){
 }
 
 template <uint8_t CMD_COUNT>
-void Marceau<CMD_COUNT>::checkReady(){
-  /*
-  if(cmdProcessor.in_process && ready()){
-    cmdProcessor.sendComplete();
-  }
-  */
-}
-
-template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::loop(){
 #ifdef ESP8266
   if(wifiEnabled) wifi.loop();
 #endif //ESP8266
   serialHandler();
-  checkReady();
 }

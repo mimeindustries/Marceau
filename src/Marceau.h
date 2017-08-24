@@ -36,7 +36,6 @@ class Marceau {
 #endif
     void initSettings();
     void saveSettings();
-    void checkReady();
     void version(char);
     void initCmds();
     void serialHandler();
