@@ -1,20 +1,33 @@
-#ifdef ESP8266
-//void handleWsMsg(char * msg){
-//  cmdProcessor.processMsg(msg);
-//}
-
-MarceauWifi wifi;
-#endif //ESP8266
-
 void sendSerialMsg(ArduinoJson::JsonObject &outMsg){
   outMsg.printTo(Serial);
   Serial.println();
 }
 
+#ifdef ESP8266
+
+MarceauWifi wifi;
+
+static wsHandler *handler;
+
+void handleWs(char *msg){
+  handler->handleWsMsg(msg);
+}
+
+template <uint8_t CMD_COUNT>
+void Marceau<CMD_COUNT>::handleWsMsg(char * msg){
+  Serial.println("Message received");
+  Serial.println((char*)msg);
+  p.processMsg(msg);
+}
+
+#endif //ESP8266
+
+
 template <uint8_t CMD_COUNT>
 Marceau<CMD_COUNT>::Marceau(){
   serialEnabled = false;
   wifiEnabled = false;
+  handler = this;
 }
 
 template <uint8_t CMD_COUNT>
@@ -23,7 +36,14 @@ void Marceau<CMD_COUNT>::begin(){
   initCmds();
   initSettings();
 #ifdef ESP8266
-  if(wifiEnabled) wifi.begin(&settings);
+  if(wifiEnabled){
+    // Start the WiFi
+    wifi.begin(&settings);
+    // Start the web server
+    webServer.begin();
+    // Start the WebSocket server
+    socketServer.begin();
+  }
 #endif
 }
 
@@ -39,8 +59,8 @@ void Marceau<CMD_COUNT>::enableSerial(Stream &s){
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::enableWifi(){
 #ifdef ESP8266
-//  wifi.onMsg(handleWsMsg);
-//  p.addOutputHandler(wifi.sendWebSocketMsg);
+  socketServer.onMsg(handleWs);
+  p.addOutputHandler(socketServer.sendWebSocketMsg);
   wifiEnabled = true;
 #endif //ESP8266
 }

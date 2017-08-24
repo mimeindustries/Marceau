@@ -42,18 +42,8 @@ void MarceauWifi::begin(MarceauSettings * _settings){
   setupWifi();
   setupDNS();
 
-  // Start the web server
-  webServer.begin();
-
-  // Start the WebSocket server
-  //beginWebSocket();
-
   enabled = true;
 }
-
-//void MarceauWifi::onMsg(dataHandler h){
-//  setWsMsgHandler(h);
-//}
 
 void MarceauWifi::defautAPName(char *name){
   uint8_t mac[6];
@@ -143,10 +133,6 @@ void MarceauWifi::staCheck(){
   if(!(uint32_t)WiFi.localIP()){
     WiFi.mode(WIFI_AP);
   }
-}
-
-void MarceauWifi::sendWebSocketMsg(ArduinoJson::JsonObject &outMsg){
-  //sendWsMsg(outMsg);
 }
 
 #endif

@@ -3,10 +3,10 @@
 
 #include "Arduino.h"
 #include "Marceau.h"
-
 #include "./lib/ArduinoJson/ArduinoJson.h"
-//#define CMD_COUNTER 31
+
 #define OUTPUT_HANDLER_COUNT 2
+
 #ifdef AVR
 #define JSON_BUFFER_LENGTH 128
 #endif //AVR
