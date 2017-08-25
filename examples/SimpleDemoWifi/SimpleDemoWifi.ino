@@ -1,4 +1,5 @@
 #include <Marceau.h>
+#include "web.h"
 
 Marceau<2> marcel;
 long completeTime = 0;
@@ -16,6 +17,8 @@ void setup(){
   marcel.addCmd("version", testImmediateFn, true);
   marcel.addCmd("delay", testDelayedFn, false);
   marcel.enableSerial(Serial);
+  marcel.enableWifi();
+  marcel.setHostname("test.marceau.com");
   marcel.begin();
 }
 
