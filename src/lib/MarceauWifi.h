@@ -32,8 +32,10 @@ class MarceauWifi {
     static bool wifiScanReady;
     static MarceauSettings * settings;
     void getWifiScanData(ArduinoJson::JsonArray &);
+    void setHostname(char * hostname);
   private:
     bool enabled;
+    char * hostname;
     static bool wifiScanRequested;
     DNSServer dnsServer;
     void setupDNS();

@@ -154,6 +154,11 @@ void Marceau<CMD_COUNT>::serialHandler(){
 }
 
 template <uint8_t CMD_COUNT>
+void Marceau<CMD_COUNT>::setHostname(char * hostname){
+  wifi.setHostname(hostname);
+}
+
+template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::loop(){
 #ifdef ESP8266
   if(wifiEnabled) wifi.loop();

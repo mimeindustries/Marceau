@@ -43,6 +43,7 @@ class Marceau{
     boolean blocking;
 #ifdef ESP8266
     void enableWifi();
+    void setHostname(char * hostname);
     void handleWsMsg(char * msg);
 #endif
   private:

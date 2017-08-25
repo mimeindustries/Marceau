@@ -29,6 +29,7 @@ void WiFiEvent(WiFiEvent_t event) {
 
 MarceauWifi::MarceauWifi() {
   enabled = false;
+  hostname = NULL;
   WiFi.mode(WIFI_OFF);
   wifiScanRequested = false;
 }
@@ -115,8 +116,22 @@ void MarceauWifi::getWifiScanData(ArduinoJson::JsonArray &msg){
 }
 
 void MarceauWifi::setupDNS(){
+  if(hostname == NULL){
+    hostname = "local.marceau.com";
+  }
   dnsServer.setErrorReplyCode(DNSReplyCode::ServerFailure);
-  dnsServer.start(53, "local.mirobot.io", IPAddress(192, 168, 4, 1));
+  dnsServer.start(53, hostname, IPAddress(192, 168, 4, 1));
+}
+
+void MarceauWifi::setHostname(char * _hostname){
+  hostname = _hostname;
+}
+
+void MarceauWifi::staCheck(){
+  sta_tick.detach();
+  if(!(uint32_t)WiFi.localIP()){
+    WiFi.mode(WIFI_AP);
+  }
 }
 
 void MarceauWifi::loop(){
@@ -125,13 +140,6 @@ void MarceauWifi::loop(){
   if(wifiScanRequested && WiFi.scanComplete() >= 0){
     wifiScanRequested = false;
     wifiScanReady = true;
-  }
-}
-
-void MarceauWifi::staCheck(){
-  sta_tick.detach();
-  if(!(uint32_t)WiFi.localIP()){
-    WiFi.mode(WIFI_AP);
   }
 }
 
