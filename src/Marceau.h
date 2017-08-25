@@ -44,6 +44,7 @@ class Marceau{
 #ifdef ESP8266
     void enableWifi();
     void setHostname(char * hostname);
+    void setDefaultAPName(char * apname);
     void handleWsMsg(char * msg);
 #endif
   private:
@@ -61,6 +62,7 @@ class Marceau{
     bool serialEnabled;
     CmdProcessor<CMD_COUNT> p;
 #ifdef ESP8266
+    char * defaultAPName;
     void networkNotifier();
     void wifiScanNotifier();
     MarceauWifi wifi;

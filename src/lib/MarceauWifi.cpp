@@ -30,6 +30,7 @@ void WiFiEvent(WiFiEvent_t event) {
 MarceauWifi::MarceauWifi() {
   enabled = false;
   hostname = NULL;
+  _defaultAPName = NULL;
   WiFi.mode(WIFI_OFF);
   wifiScanRequested = false;
 }
@@ -46,10 +47,18 @@ void MarceauWifi::begin(MarceauSettings * _settings){
   enabled = true;
 }
 
-void MarceauWifi::defautAPName(char *name){
+void MarceauWifi::setDefaultAPName(char * apname){
+  _defaultAPName = apname;
+}
+
+void MarceauWifi::defaultAPName(char * name){
   uint8_t mac[6];
   WiFi.softAPmacAddress(mac);
-  sprintf(name, "Marceau-%02X%02X", mac[4], mac[5]);
+  if(_defaultAPName == NULL){
+    sprintf(name, "Marceau-%02X%02X", mac[4], mac[5]);
+  }else{
+    strcpy(name, _defaultAPName);
+  }
 }
 
 IPAddress MarceauWifi::getStaIp(){

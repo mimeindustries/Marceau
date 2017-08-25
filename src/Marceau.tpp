@@ -100,7 +100,7 @@ void Marceau<CMD_COUNT>::initSettings(){
   //settings.sta_fixednetmask = (uint32_t)IPAddress(255, 255, 255, 0);
   settings.sta_fixeddns1 = 0;
   settings.sta_fixeddns2 = 0;
-  MarceauWifi::defautAPName(settings.ap_ssid);
+  wifi.defaultAPName(settings.ap_ssid);
   settings.ap_pass[0] = 0;
   settings.discovery = true;
 #endif //ESP8266
@@ -156,6 +156,11 @@ void Marceau<CMD_COUNT>::serialHandler(){
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::setHostname(char * hostname){
   wifi.setHostname(hostname);
+}
+
+template <uint8_t CMD_COUNT>
+void Marceau<CMD_COUNT>::setDefaultAPName(char * apname){
+  wifi.setDefaultAPName(apname);
 }
 
 template <uint8_t CMD_COUNT>

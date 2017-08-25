@@ -22,7 +22,7 @@ class MarceauWifi {
     MarceauWifi();
     void begin(MarceauSettings *);
     void loop();
-    static void defautAPName(char*);
+    void defaultAPName(char*);
     static IPAddress getStaIp();
     static int32_t getStaRSSI();
     static WiFiMode getWifiMode();
@@ -33,9 +33,11 @@ class MarceauWifi {
     static MarceauSettings * settings;
     void getWifiScanData(ArduinoJson::JsonArray &);
     void setHostname(char * hostname);
+    void setDefaultAPName(char * apname);
   private:
     bool enabled;
     char * hostname;
+    char * _defaultAPName;
     static bool wifiScanRequested;
     DNSServer dnsServer;
     void setupDNS();

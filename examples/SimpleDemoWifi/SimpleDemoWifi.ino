@@ -19,6 +19,7 @@ void setup(){
   marcel.enableSerial(Serial);
   marcel.enableWifi();
   marcel.setHostname("test.marceau.com");
+  marcel.setDefaultAPName("bobstance");
   marcel.begin();
 }
 
