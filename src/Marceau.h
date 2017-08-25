@@ -16,22 +16,27 @@
 
 #define SERIAL_BUFFER_LENGTH 180
 
+#ifdef ESP8266
+#define BUILTIN_CMDS 7
+#else
+#define BUILTIN_CMDS 2
+#endif
+
 typedef void (* Fn) (ArduinoJson::JsonObject &, ArduinoJson::JsonObject &);
 
-#ifdef ESP8266
-class wsHandler
+class MarceauBase
 {
-public:
-  virtual void handleWsMsg(char * msg);
+  public:
+#ifdef ESP8266
+    virtual void handleWsMsg(char * msg);
+    virtual void getConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson);
+    virtual void setConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson);
+    virtual void resetConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson);
+#endif
 };
 
 template <uint8_t CMD_COUNT>
-class Marceau: public wsHandler{
-#endif
-#ifdef AVR
-template <uint8_t CMD_COUNT>
-class Marceau{
-#endif
+class Marceau: public MarceauBase{
   public:
     Marceau();
     void begin();
@@ -45,7 +50,10 @@ class Marceau{
     void enableWifi();
     void setHostname(char * hostname);
     void setDefaultAPName(char * apname);
-    void handleWsMsg(char * msg);
+    virtual void handleWsMsg(char * msg);
+    virtual void getConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson);
+    virtual void setConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson);
+    virtual void resetConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson);
 #endif
   private:
     void wait();
@@ -60,7 +68,7 @@ class Marceau{
     int serial_buffer_pos;
     bool wifiEnabled;
     bool serialEnabled;
-    CmdProcessor<CMD_COUNT> p;
+    CmdProcessor<CMD_COUNT+BUILTIN_CMDS> p;
 #ifdef ESP8266
     char * defaultAPName;
     void networkNotifier();

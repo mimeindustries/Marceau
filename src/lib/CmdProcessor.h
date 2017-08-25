@@ -34,6 +34,8 @@ class CmdProcessor {
     void notify(const char[], ArduinoJson::JsonObject &);
     void sendComplete();
     boolean processMsg(char * msg);
+    int cmdCount();
+    char * getCmdName(int);
     boolean in_process;
   private:
     boolean processLine();

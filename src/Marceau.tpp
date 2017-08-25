@@ -1,33 +1,18 @@
+static MarceauBase *m;
+
+#include "lib/builtin_commands.tpp"
+
 void sendSerialMsg(ArduinoJson::JsonObject &outMsg){
   outMsg.printTo(Serial);
   Serial.println();
 }
 
-#ifdef ESP8266
-
-
-static wsHandler *handler;
-
-void handleWs(char *msg){
-  handler->handleWsMsg(msg);
-}
-
-template <uint8_t CMD_COUNT>
-void Marceau<CMD_COUNT>::handleWsMsg(char * msg){
-  Serial.println("Message received");
-  Serial.println((char*)msg);
-  p.processMsg(msg);
-}
-
-#endif //ESP8266
-
-
 template <uint8_t CMD_COUNT>
 Marceau<CMD_COUNT>::Marceau(){
   serialEnabled = false;
+  m = this;
 #ifdef ESP8266
   wifiEnabled = false;
-  handler = this;
 #endif
 }
 
@@ -56,15 +41,6 @@ void Marceau<CMD_COUNT>::enableSerial(Stream &s){
   // Enable serial processing
   serialEnabled = true;
 }
-
-#ifdef ESP8266
-template <uint8_t CMD_COUNT>
-void Marceau<CMD_COUNT>::enableWifi(){
-  socketServer.onMsg(handleWs);
-  p.addOutputHandler(socketServer.sendWebSocketMsg);
-  wifiEnabled = true;
-}
-#endif //ESP8266
 
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::addCmd(const char cmd[], Fn func, bool immediate){
@@ -128,6 +104,15 @@ void Marceau<CMD_COUNT>::saveSettings(){
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::initCmds(){
   // Set up the built in commands
+  p.addCmd("ping",          _ping,          true);
+  p.addCmd("uptime",        _uptime,        true);
+#ifdef ESP8266
+  p.addCmd("freeHeap",      _freeHeap,      true);
+  p.addCmd("getConfig",     _getConfig,     true);
+  p.addCmd("setConfig",     _getConfig,     true);
+  p.addCmd("resetConfig",   _getConfig,     true);
+  p.addCmd("startWifiScan", _startWifiScan, true);
+#endif
 }
 
 template <uint8_t CMD_COUNT>
@@ -159,6 +144,26 @@ void Marceau<CMD_COUNT>::serialHandler(){
   }
 }
 
+#ifdef ESP8266
+
+void handleWs(char *msg){
+  m->handleWsMsg(msg);
+}
+
+template <uint8_t CMD_COUNT>
+void Marceau<CMD_COUNT>::handleWsMsg(char * msg){
+  Serial.println("Message received");
+  Serial.println((char*)msg);
+  p.processMsg(msg);
+}
+
+template <uint8_t CMD_COUNT>
+void Marceau<CMD_COUNT>::enableWifi(){
+  socketServer.onMsg(handleWs);
+  p.addOutputHandler(socketServer.sendWebSocketMsg);
+  wifiEnabled = true;
+}
+
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::setHostname(char * hostname){
   wifi.setHostname(hostname);
@@ -170,9 +175,34 @@ void Marceau<CMD_COUNT>::setDefaultAPName(char * apname){
 }
 
 template <uint8_t CMD_COUNT>
+void Marceau<CMD_COUNT>::networkNotifier(){
+  if(!MarceauWifi::networkChanged) return;
+  StaticJsonBuffer<500> outBuffer;
+  JsonObject& outMsg = outBuffer.createObject();
+  MarceauWifi::networkChanged = false;
+  _getConfig(outMsg, outMsg);
+  p.notify("network", outMsg);
+}
+
+template <uint8_t CMD_COUNT>
+void Marceau<CMD_COUNT>::wifiScanNotifier(){
+  if(!MarceauWifi::wifiScanReady) return;
+  StaticJsonBuffer<1000> outBuffer;
+  JsonObject& outMsg = outBuffer.createObject();
+  JsonArray& msg = outMsg.createNestedArray("msg");
+  MarceauWifi::wifiScanReady = false;
+  wifi.getWifiScanData(msg);
+  p.notify("wifiScan", outMsg);
+}
+#endif //ESP8266
+
+
+template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::loop(){
 #ifdef ESP8266
   if(wifiEnabled) wifi.loop();
+  networkNotifier();
+  wifiScanNotifier();
 #endif //ESP8266
   serialHandler();
 }
