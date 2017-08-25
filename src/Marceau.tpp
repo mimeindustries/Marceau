@@ -78,6 +78,9 @@ void Marceau<CMD_COUNT>::cmdComplete(){
 
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::initSettings(){
+#ifdef ESP8266
+  EEPROM.begin(sizeof(MarceauSettings));
+#endif
   if(EEPROM.read(EEPROM_OFFSET) == MAGIC_BYTE_1 && EEPROM.read(EEPROM_OFFSET + 1) == MAGIC_BYTE_2 && EEPROM.read(EEPROM_OFFSET + 2) == SETTINGS_VERSION){
     // We've previously written something valid to the EEPROM
     for (unsigned int t=0; t<sizeof(settings); t++){
@@ -97,18 +100,21 @@ void Marceau<CMD_COUNT>::initSettings(){
   settings.sta_dhcp = true;
   settings.sta_fixedip = 0;
   settings.sta_fixedgateway = 0;
-  //settings.sta_fixednetmask = (uint32_t)IPAddress(255, 255, 255, 0);
+  settings.sta_fixednetmask = (uint32_t)IPAddress(255, 255, 255, 0);
   settings.sta_fixeddns1 = 0;
   settings.sta_fixeddns2 = 0;
   wifi.defaultAPName(settings.ap_ssid);
   settings.ap_pass[0] = 0;
   settings.discovery = true;
 #endif //ESP8266
-  //saveSettings();
+  saveSettings();
 }
 
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::saveSettings(){
+#ifdef ESP8266
+  EEPROM.begin(sizeof(MarceauSettings));
+#endif
   EEPROM.write(EEPROM_OFFSET, MAGIC_BYTE_1);
   EEPROM.write(EEPROM_OFFSET + 1, MAGIC_BYTE_2);
   for (unsigned int t=0; t<sizeof(settings); t++){
