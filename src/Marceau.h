@@ -62,6 +62,7 @@ class Marceau{
 #ifdef ESP8266
     void networkNotifier();
     void wifiScanNotifier();
+    MarceauWifi wifi;
     MarceauWeb webServer;
     MarceauWebSocket socketServer;
 #endif

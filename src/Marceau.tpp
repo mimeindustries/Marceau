@@ -5,7 +5,6 @@ void sendSerialMsg(ArduinoJson::JsonObject &outMsg){
 
 #ifdef ESP8266
 
-MarceauWifi wifi;
 
 static wsHandler *handler;
 
