@@ -23,6 +23,7 @@
 #endif
 
 typedef void (* Fn) (ArduinoJson::JsonObject &, ArduinoJson::JsonObject &);
+typedef void (* cb) ();
 
 class MarceauBase
 {
@@ -44,9 +45,12 @@ class Marceau: public MarceauBase{
     void loop();
     void addCmd(const char cmd[], Fn func, bool immediate);
     void cmdComplete();
+    void resetSettings();
+    void notify(char * status, ArduinoJson::JsonObject &msg);
     MarceauSettings settings;
     boolean blocking;
 #ifdef ESP8266
+    MarceauWifi wifi;
     void enableWifi();
     void setHostname(char * hostname);
     void setDefaultAPName(char * apname);
@@ -73,7 +77,6 @@ class Marceau: public MarceauBase{
     char * defaultAPName;
     void networkNotifier();
     void wifiScanNotifier();
-    MarceauWifi wifi;
     MarceauWeb webServer;
     MarceauWebSocket socketServer;
 #endif

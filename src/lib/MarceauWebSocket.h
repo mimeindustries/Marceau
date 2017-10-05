@@ -6,7 +6,6 @@
 #include <WiFiClient.h>
 #include "lib/ESPAsyncTCP/ESPAsyncTCP.h"
 #include "lib/ESPAsyncWebServer/ESPAsyncWebServer.h"
-#include "lib/webFiles.h"
 #include "lib/ArduinoJson/ArduinoJson.h"
 
 #ifdef AVR

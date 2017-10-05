@@ -104,7 +104,6 @@ void CmdProcessor<CMD_COUNT>::sendResponse(const char status[], ArduinoJson::Jso
     outMsg["id"] = &id;
   }
   outMsg["status"] = status;
-
   for(int i = 0; i< OUTPUT_HANDLER_COUNT; i++){
     if(outputHandlers[i] != NULL){
       outputHandlers[i](outMsg);

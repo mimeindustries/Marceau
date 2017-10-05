@@ -1,6 +1,6 @@
 #ifdef ESP8266
 
-void _getConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
+static void _getConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
   m->getConfig(inJson, outJson);
 }
 
@@ -19,11 +19,10 @@ void Marceau<CMD_COUNT>::getConfig(ArduinoJson::JsonObject &inJson, ArduinoJson:
   msg["sta_ip"] = MarceauWifi::getStaIp().toString();
   msg["ap_ssid"] = settings.ap_ssid;
   msg["ap_encrypted"] = !!strlen(settings.ap_pass);
-  msg["discovery"] = settings.discovery;
   msg["wifi_mode"] = modes[MarceauWifi::getWifiMode()];
 }
 
-void _setConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
+static void _setConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
   m->setConfig(inJson, outJson);
 }
 
@@ -57,7 +56,7 @@ void Marceau<CMD_COUNT>::setConfig(ArduinoJson::JsonObject &inJson, ArduinoJson:
     addr.fromString(inJson["arg"]["sta_fixedip"].asString());
     settings.sta_fixedip = addr;
   }
-  // The DNS server to use for the fixed IP
+  // The gateway address to use for the fixed IP
   if(inJson["arg"].asObject().containsKey("sta_fixedgateway")){
     addr.fromString(inJson["arg"]["sta_fixedgateway"].asString());
     settings.sta_fixedgateway = addr;
@@ -67,47 +66,41 @@ void Marceau<CMD_COUNT>::setConfig(ArduinoJson::JsonObject &inJson, ArduinoJson:
     addr.fromString(inJson["arg"]["sta_fixednetmask"].asString());
     settings.sta_fixednetmask = addr;
   }
-  // The netmask to use for the fixed IP
+  // The first address to use for the fixed DNS
   if(inJson["arg"].asObject().containsKey("sta_fixeddns1")){
     addr.fromString(inJson["arg"]["sta_fixeddns1"].asString());
     settings.sta_fixeddns1 = addr;
   }
-  // The netmask to use for the fixed IP
+  // The second address to use for the fixed DNS
   if(inJson["arg"].asObject().containsKey("sta_fixeddns2")){
     addr.fromString(inJson["arg"]["sta_fixeddns2"].asString());
     settings.sta_fixeddns2 = addr;
-  }
-  // The netmask to use for the fixed IP
-  if(inJson["arg"].asObject().containsKey("discovery")){
-    settings.discovery = inJson["arg"]["discovery"];
   }
   wifi.setupWifi();
   saveSettings();
 }
 
-void _resetConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
+static void _resetConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
   m->resetConfig(inJson, outJson);
 }
 
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::resetConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
-  settings.settingsVersion = 0;
-  saveSettings();
-  initSettings();
-  wifi.setupWifi();
+  resetSettings();
+  ESP.restart();
 }
 
-void _startWifiScan(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
+static void _startWifiScan(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
   MarceauWifi::startWifiScan();
 }
 
-void _freeHeap(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
+static void _freeHeap(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
   outJson["msg"] = ESP.getFreeHeap();
 }
 #endif //ESP8266
 
-void _uptime(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
+static void _uptime(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
   outJson["msg"] = millis();
 }
 
-void _ping(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){}
+static void _ping(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){}

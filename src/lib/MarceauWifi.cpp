@@ -4,31 +4,17 @@
 #include "MarceauWifi.h"
 
 Ticker sta_tick;
-//Ticker discovery_tick;
 
 bool MarceauWifi::networkChanged = false;
+bool MarceauWifi::online = false;
 bool MarceauWifi::wifiScanRequested = false;
 bool MarceauWifi::wifiScanReady = false;
 MarceauSettings *MarceauWifi::settings;
-
-void WiFiEvent(WiFiEvent_t event) {
-  switch(event) {
-    case WIFI_EVENT_STAMODE_GOT_IP:
-      //if(MarceauWifi::settings->discovery){
-      //  send_discovery();
-      //  discovery_tick.attach(300, send_discovery);
-      //}
-      MarceauWifi::networkChanged = true;
-      break;
-    case WIFI_EVENT_STAMODE_DISCONNECTED:
-      //if(MarceauWifi::settings->discovery) discovery_tick.detach();
-      MarceauWifi::networkChanged = true;
-      break;
-  }
-}
+WiFiEventHandler gotIpEventHandler, disconnectedEventHandler;
 
 MarceauWifi::MarceauWifi() {
   enabled = false;
+  online = false;
   hostname = NULL;
   _defaultAPName = NULL;
   WiFi.mode(WIFI_OFF);
@@ -39,7 +25,14 @@ void MarceauWifi::begin(MarceauSettings * _settings){
   settings = _settings;
 
   // Subscribe to state change events
-  WiFi.onEvent(WiFiEvent);
+  gotIpEventHandler = WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP& event){
+      MarceauWifi::networkChanged = true;
+      MarceauWifi::online = true;
+  });
+  disconnectedEventHandler = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event){
+      MarceauWifi::networkChanged = true;
+      MarceauWifi::online = false;
+  });
   
   setupWifi();
   setupDNS();
@@ -113,14 +106,47 @@ void MarceauWifi::startWifiScan(){
   WiFi.scanNetworks(true, true);
 }
 
-void MarceauWifi::getWifiScanData(ArduinoJson::JsonArray &msg){
+int MarceauWifi::getWifiScanData(ArduinoJson::JsonArray &msg, int done){
+  bool rejected;
+  bool sent;
+  uint8_t chunk_size = 5;
+  uint8_t item_index = 0;
   int count = WiFi.scanComplete();
-  if(count < 0) return;
-  for (int i = 0; i < count; ++i){
-    JsonArray& net = msg.createNestedArray();
-    net.add(WiFi.SSID(i));
-    net.add(WiFi.encryptionType(i) != ENC_TYPE_NONE);
-    net.add(WiFi.RSSI(i));
+  if(done == count -1) return -1;
+  if(count >= 0){
+    // We've got some results to send
+    for (int i = 0; i < count; i++){
+      // Check if we have already sent this SSID and filter if so
+      rejected = false;
+      for(int j=0; j< i; j++){
+        if(WiFi.SSID(i) == WiFi.SSID(j)){
+          rejected = true;
+          break;
+        }
+      }
+      // Filter this SSID if we've already sent it
+      sent = (item_index < done);
+
+      // Add it to the result if we're not filtering it
+      if(WiFi.SSID(i) && WiFi.RSSI(i) && !rejected && !sent){
+        JsonArray& net = msg.createNestedArray();
+        net.add(WiFi.SSID(i));
+        net.add(WiFi.encryptionType(i) != ENC_TYPE_NONE);
+        net.add(WiFi.RSSI(i));
+      }
+
+      if(!rejected) item_index++;
+
+      // Return if we've hit this chunk size
+      if(item_index > done + chunk_size -1){
+        return item_index;
+      }
+    }
+    if(msg.size() == 0){
+      return -1;
+    }else{
+      return item_index;
+    }
   }
 }
 

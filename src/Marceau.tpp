@@ -2,7 +2,7 @@ static MarceauBase *m;
 
 #include "lib/builtin_commands.tpp"
 
-void sendSerialMsg(ArduinoJson::JsonObject &outMsg){
+static void sendSerialMsg(ArduinoJson::JsonObject &outMsg){
   outMsg.printTo(Serial);
   Serial.println();
 }
@@ -53,6 +53,25 @@ void Marceau<CMD_COUNT>::cmdComplete(){
 }
 
 template <uint8_t CMD_COUNT>
+void Marceau<CMD_COUNT>::resetSettings(){
+  settings.settingsVersion = SETTINGS_VERSION;
+#ifdef ESP8266
+  settings.sta_ssid[0] = 0;
+  settings.sta_pass[0] = 0;
+  settings.sta_dhcp = true;
+  settings.sta_fixedip = 0;
+  settings.sta_fixedgateway = 0;
+  settings.sta_fixednetmask = (uint32_t)IPAddress(255, 255, 255, 0);
+  settings.sta_fixeddns1 = 0;
+  settings.sta_fixeddns2 = 0;
+  wifi.defaultAPName(settings.ap_ssid);
+  settings.ap_pass[0] = 0;
+  settings.discovery = true;
+#endif //ESP8266
+  saveSettings();
+}
+
+template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::initSettings(){
 #ifdef ESP8266
   EEPROM.begin(sizeof(MarceauSettings));
@@ -69,21 +88,7 @@ void Marceau<CMD_COUNT>::initSettings(){
     }
   }
   // Either this is the first boot or the settings are bad so let's reset them
-  settings.settingsVersion = SETTINGS_VERSION;
-#ifdef ESP8266
-  settings.sta_ssid[0] = 0;
-  settings.sta_pass[0] = 0;
-  settings.sta_dhcp = true;
-  settings.sta_fixedip = 0;
-  settings.sta_fixedgateway = 0;
-  settings.sta_fixednetmask = (uint32_t)IPAddress(255, 255, 255, 0);
-  settings.sta_fixeddns1 = 0;
-  settings.sta_fixeddns2 = 0;
-  wifi.defaultAPName(settings.ap_ssid);
-  settings.ap_pass[0] = 0;
-  settings.discovery = true;
-#endif //ESP8266
-  saveSettings();
+  resetSettings();
 }
 
 template <uint8_t CMD_COUNT>
@@ -109,8 +114,8 @@ void Marceau<CMD_COUNT>::initCmds(){
 #ifdef ESP8266
   p.addCmd("freeHeap",      _freeHeap,      true);
   p.addCmd("getConfig",     _getConfig,     true);
-  p.addCmd("setConfig",     _getConfig,     true);
-  p.addCmd("resetConfig",   _getConfig,     true);
+  p.addCmd("setConfig",     _setConfig,     true);
+  p.addCmd("resetConfig",   _resetConfig,   true);
   p.addCmd("startWifiScan", _startWifiScan, true);
 #endif
 }
@@ -146,13 +151,12 @@ void Marceau<CMD_COUNT>::serialHandler(){
 
 #ifdef ESP8266
 
-void handleWs(char *msg){
+static void handleWs(char *msg){
   m->handleWsMsg(msg);
 }
 
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::handleWsMsg(char * msg){
-  Serial.println("Message received");
   Serial.println((char*)msg);
   p.processMsg(msg);
 }
@@ -177,32 +181,46 @@ void Marceau<CMD_COUNT>::setDefaultAPName(char * apname){
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::networkNotifier(){
   if(!MarceauWifi::networkChanged) return;
+  MarceauWifi::networkChanged = false;
   StaticJsonBuffer<500> outBuffer;
   JsonObject& outMsg = outBuffer.createObject();
-  MarceauWifi::networkChanged = false;
   _getConfig(outMsg, outMsg);
   p.notify("network", outMsg);
 }
 
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::wifiScanNotifier(){
+  int done = 0;
   if(!MarceauWifi::wifiScanReady) return;
-  StaticJsonBuffer<1000> outBuffer;
-  JsonObject& outMsg = outBuffer.createObject();
-  JsonArray& msg = outMsg.createNestedArray("msg");
-  MarceauWifi::wifiScanReady = false;
-  wifi.getWifiScanData(msg);
-  p.notify("wifiScan", outMsg);
+  while(true){
+    MarceauWifi::wifiScanReady = false;
+    StaticJsonBuffer<500> outBuffer;
+    JsonObject& outMsg = outBuffer.createObject();
+    JsonArray& msg = outMsg.createNestedArray("msg");
+    done = wifi.getWifiScanData(msg, done);
+    if(done >= 0){
+      p.notify("wifiScan", outMsg);
+    }else{
+      break;
+    }
+  }
 }
+
 #endif //ESP8266
 
+template <uint8_t CMD_COUNT>
+void Marceau<CMD_COUNT>::notify(char * status, ArduinoJson::JsonObject &msg){
+  p.notify(status, msg);
+}
 
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::loop(){
 #ifdef ESP8266
-  if(wifiEnabled) wifi.loop();
-  networkNotifier();
-  wifiScanNotifier();
+  if(wifiEnabled){
+    wifi.loop();
+    networkNotifier();
+    wifiScanNotifier();
+  }
 #endif //ESP8266
   serialHandler();
 }

@@ -9,9 +9,7 @@
 #include "lib/MarceauSettings.h"
 #include <DNSServer.h>
 #include <Ticker.h>
-//#include "lib/Discovery.h"
 #include "lib/ArduinoJson/ArduinoJson.h"
-#include "lib/webFiles.h"
 
 typedef void (* dataHandler) (char *);
 
@@ -20,6 +18,10 @@ struct MarceauSettings;
 class MarceauWifi {
   public:
     MarceauWifi();
+    static MarceauSettings * settings;
+    static bool online;
+    static bool networkChanged;
+    static bool wifiScanReady;
     void begin(MarceauSettings *);
     void loop();
     void defaultAPName(char*);
@@ -28,10 +30,7 @@ class MarceauWifi {
     static WiFiMode getWifiMode();
     static void startWifiScan();
     void setupWifi();
-    static bool networkChanged;
-    static bool wifiScanReady;
-    static MarceauSettings * settings;
-    void getWifiScanData(ArduinoJson::JsonArray &);
+    int getWifiScanData(ArduinoJson::JsonArray &, int);
     void setHostname(char * hostname);
     void setDefaultAPName(char * apname);
   private:
