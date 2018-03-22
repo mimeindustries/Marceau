@@ -16,6 +16,7 @@ class MarceauRequestHandler: public AsyncWebHandler {
     void handleRequest(AsyncWebServerRequest *request){
       uint8_t i;
       bool found = false;
+      bool gzip = false;
 
       if(request->method() == HTTP_GET){
         String path = request->url();
@@ -23,7 +24,15 @@ class MarceauRequestHandler: public AsyncWebHandler {
         
         // Loop through our files to find one that matches
         for(i=0; i<webFileCount; i++){
-          if(path == webFiles[i].filename){
+
+          if(path + ".gz"== webFiles[i].filename){
+            found = true;
+            gzip = true;
+          }else if(path == webFiles[i].filename){
+            found = true;
+          }
+
+          if(found){
             // If it's a match, send the file
             AsyncWebServerResponse *response = request->beginResponse_P(
               200,
@@ -31,9 +40,9 @@ class MarceauRequestHandler: public AsyncWebHandler {
               webFiles[i].content,
               webFiles[i].len
             );
+            if(gzip) response->addHeader("Content-Encoding", "gzip");
             request->send(response);
             
-            found = true;
             break;
           }
         }
@@ -44,6 +53,17 @@ class MarceauRequestHandler: public AsyncWebHandler {
 };
 
 void MarceauWeb::begin() {
+  FSInfo fs_info;
+  bool res = SPIFFS.begin();
+
+  if(res && SPIFFS.info(fs_info)){
+    server.serveStatic("/a/", SPIFFS, "/")
+          .setLastModified("Wed, 20 Dec 2017 18:35:00 GMT");
+  }else{
+    //TODO: Decide if we want to load a full image or individual files
+    //SPIFFS.format();
+  }
+
   server.addHandler(new MarceauRequestHandler());
 	server.begin();
 }

@@ -21,7 +21,7 @@
 #ifdef ESP8266
 #include "ESPAsyncWebServer.h"
 #include "WebResponseImpl.h"
-//#include "WebAuthentication.h"
+#include "WebAuthentication.h"
 
 #ifndef ESP8266
 #define os_strlen strlen
@@ -790,7 +790,7 @@ void AsyncWebServerRequest::redirect(const String& url){
   response->addHeader("Location",url);
   send(response);
 }
-/*
+
 bool AsyncWebServerRequest::authenticate(const char * username, const char * password, const char * realm, bool passwordIsHash){
   if(_authorization.length()){
     if(_isDigest)
@@ -841,7 +841,7 @@ void AsyncWebServerRequest::requestAuthentication(const char * realm, bool isDig
   }
   send(r);
 }
-*/
+
 bool AsyncWebServerRequest::hasArg(const char* name) const {
   for(const auto& arg: _params){
     if(arg->name() == name){
