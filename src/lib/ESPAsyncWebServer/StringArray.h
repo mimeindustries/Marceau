@@ -192,4 +192,4 @@ public:
 
 
 #endif /* STRINGARRAY_H_ */
-#endif //ESP8266
+#endif

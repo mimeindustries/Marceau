@@ -18,9 +18,15 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
+#ifdef ESP8266
 #include "WebAuthentication.h"
 #include <libb64/cencode.h>
+#ifdef ESP32
+#include "mbedtls/md5.h"
+#else
 #include "md5.h"
+#endif
+
 
 // Basic Auth hash = base64("username:password")
 
@@ -54,15 +60,26 @@ bool checkBasicAuthentication(const char * hash, const char * username, const ch
 }
 
 static bool getMD5(uint8_t * data, uint16_t len, char * output){//33 bytes or more
-  md5_context_t _ctx;
+#ifdef ESP32
+    mbedtls_md5_context _ctx;
+#else
+    md5_context_t _ctx;
+#endif
   uint8_t i;
   uint8_t * _buf = (uint8_t*)malloc(16);
   if(_buf == NULL)
     return false;
   memset(_buf, 0x00, 16);
+#ifdef ESP32
+  mbedtls_md5_init(&_ctx);
+  mbedtls_md5_starts(&_ctx);
+  mbedtls_md5_update(&_ctx, data, len);
+  mbedtls_md5_finish(&_ctx, _buf);
+#else
   MD5Init(&_ctx);
   MD5Update(&_ctx, data, len);
   MD5Final(_buf, &_ctx);
+#endif
   for(i = 0; i < 16; i++) {
     sprintf(output + (i * 2), "%02x", _buf[i]);
   }
@@ -217,3 +234,4 @@ bool checkDigestAuthentication(const char * header, const char * method, const c
   //os_printf("AUTH FAIL: password\n");
   return false;
 }
+#endif

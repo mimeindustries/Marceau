@@ -25,21 +25,27 @@
 #include "Arduino.h"
 
 #include <functional>
-#include "../ESPAsyncTCP/ESPAsyncTCP.h"
 #include "FS.h"
 
 #include "StringArray.h"
 
-#if defined(ESP31B)
-#include <ESP31BWiFi.h>
+#ifdef ESP32
+#include <WiFi.h>
+#include <AsyncTCP.h>
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
+#include "../ESPAsyncTCP/ESPAsyncTCP.h"
 #else
 #error Platform not supported
 #endif
 
-#define DEBUGF(...) //Serial.printf(__VA_ARGS__)
+#ifdef ASYNCWEBSERVER_REGEX
+#define ASYNCWEBSERVER_REGEX_ATTRIBUTE
+#else
+#define ASYNCWEBSERVER_REGEX_ATTRIBUTE __attribute__((warning("ASYNCWEBSERVER_REGEX not defined")))
+#endif
 
+#define DEBUGF(...) //Serial.printf(__VA_ARGS__)
 
 class AsyncWebServer;
 class AsyncWebServerRequest;
@@ -52,6 +58,7 @@ class AsyncStaticWebHandler;
 class AsyncCallbackWebHandler;
 class AsyncResponseStream;
 
+#ifndef WEBSERVER_H
 typedef enum {
   HTTP_GET     = 0b00000001,
   HTTP_POST    = 0b00000010,
@@ -62,7 +69,13 @@ typedef enum {
   HTTP_OPTIONS = 0b01000000,
   HTTP_ANY     = 0b01111111,
 } WebRequestMethod;
+#endif
+
+//if this value is returned when asked for data, packet will not be sent and you will be asked for data again
+#define RESPONSE_TRY_AGAIN 0xFFFFFFFF
+
 typedef uint8_t WebRequestMethodComposite;
+typedef std::function<void(void)> ArDisconnectHandler;
 
 /*
  * PARAMETER :: Chainable object to hold GET/POST and FILE parameters
@@ -123,12 +136,14 @@ class AsyncWebServerRequest {
   using File = fs::File;
   using FS = fs::FS;
   friend class AsyncWebServer;
+  friend class AsyncCallbackWebHandler;
   private:
     AsyncClient* _client;
     AsyncWebServer* _server;
     AsyncWebHandler* _handler;
     AsyncWebServerResponse* _response;
     StringArray _interestingHeaders;
+    ArDisconnectHandler _onDisconnectfn;
 
     String _temp;
     uint8_t _parseState;
@@ -151,6 +166,7 @@ class AsyncWebServerRequest {
 
     LinkedList<AsyncWebHeader *> _headers;
     LinkedList<AsyncWebParameter *> _params;
+    LinkedList<String *> _pathParams;
 
     uint8_t _multiParseState;
     uint8_t _boundaryPosition;
@@ -172,6 +188,7 @@ class AsyncWebServerRequest {
     void _onData(void *buf, size_t len);
 
     void _addParam(AsyncWebParameter*);
+    void _addPathParam(const char *param);
 
     bool _parseReqHead();
     bool _parseReqHeader();
@@ -203,6 +220,7 @@ class AsyncWebServerRequest {
     const char * requestedConnTypeToString() const;
     RequestedConnectionType requestedConnType() const { return _reqconntype; }
     bool isExpectedRequestedConnType(RequestedConnectionType erct1, RequestedConnectionType erct2 = RCT_NOT_USED, RequestedConnectionType erct3 = RCT_NOT_USED);
+    void onDisconnect (ArDisconnectHandler fn);
 
     //hash is the string representation of:
     // base64(user:pass) for basic or
@@ -260,6 +278,8 @@ class AsyncWebServerRequest {
     bool hasArg(const char* name) const;         // check if argument exists
     bool hasArg(const __FlashStringHelper * data) const;         // check if F(argument) exists
 
+    const String& ASYNCWEBSERVER_REGEX_ATTRIBUTE pathArg(size_t i) const;
+
     const String& header(const char* name) const;// get request header value by name
     const String& header(const __FlashStringHelper * data) const;// get request header value by F(name)    
     const String& header(size_t i) const;        // get request header value by number
@@ -295,11 +315,13 @@ class AsyncWebRewrite {
         _toUrl = _toUrl.substring(0, index);
       }
     }
+    virtual ~AsyncWebRewrite(){}
     AsyncWebRewrite& setFilter(ArRequestFilterFunction fn) { _filter = fn; return *this; }
     bool filter(AsyncWebServerRequest *request) const { return _filter == NULL || _filter(request); }
     const String& from(void) const { return _from; }
     const String& toUrl(void) const { return _toUrl; }
     const String& params(void) const { return _params; }
+    virtual bool match(AsyncWebServerRequest *request) { return from() == request->url() && filter(request); }
 };
 
 /*
@@ -323,6 +345,7 @@ class AsyncWebHandler {
     virtual void handleRequest(AsyncWebServerRequest *request __attribute__((unused))){}
     virtual void handleUpload(AsyncWebServerRequest *request  __attribute__((unused)), const String& filename __attribute__((unused)), size_t index __attribute__((unused)), uint8_t *data __attribute__((unused)), size_t len __attribute__((unused)), bool final  __attribute__((unused))){}
     virtual void handleBody(AsyncWebServerRequest *request __attribute__((unused)), uint8_t *data __attribute__((unused)), size_t len __attribute__((unused)), size_t index __attribute__((unused)), size_t total __attribute__((unused))){}
+    virtual bool isRequestHandlerTrivial(){return true;}
 };
 
 /*
@@ -384,6 +407,7 @@ class AsyncWebServer {
     ~AsyncWebServer();
 
     void begin();
+    void end();
 
 #if ASYNC_TCP_SSL_ENABLED
     void onSslFileRequest(AcSSlFileHandler cb, void* arg);
@@ -415,10 +439,35 @@ class AsyncWebServer {
     void _rewriteRequest(AsyncWebServerRequest *request);
 };
 
+class DefaultHeaders {
+  using headers_t = LinkedList<AsyncWebHeader *>;
+  headers_t _headers;
+  
+  DefaultHeaders()
+  :_headers(headers_t([](AsyncWebHeader *h){ delete h; }))
+  {}
+public:
+  using ConstIterator = headers_t::ConstIterator;
+
+  void addHeader(const String& name, const String& value){
+    _headers.add(new AsyncWebHeader(name, value));
+  }  
+  
+  ConstIterator begin() const { return _headers.begin(); }
+  ConstIterator end() const { return _headers.end(); }
+
+  DefaultHeaders(DefaultHeaders const &) = delete;
+  DefaultHeaders &operator=(DefaultHeaders const &) = delete;
+  static DefaultHeaders &Instance() {
+    static DefaultHeaders instance;
+    return instance;
+  }
+};
+
 #include "WebResponseImpl.h"
 #include "WebHandlerImpl.h"
 #include "AsyncWebSocket.h"
-//#include "AsyncEventSource.h"
+#include "AsyncEventSource.h"
 
 #endif /* _AsyncWebServer_H_ */
-#endif //ESP8266
+#endif

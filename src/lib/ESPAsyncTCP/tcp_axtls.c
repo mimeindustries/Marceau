@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <tcp_axtls.h>
 
 uint8_t * default_private_key = NULL;
@@ -407,6 +408,7 @@ int tcp_ssl_read(struct tcp_pcb *tcp, struct pbuf *p) {
   } while (p->tot_len - fd_data->pbuf_offset > 0);
 
   tcp_recved(tcp, p->tot_len);
+  fd_data->tcp_pbuf = NULL;
   pbuf_free(p);
 
   return total_bytes;
@@ -585,4 +587,4 @@ int ax_port_read(int fd, uint8_t *data, int len) {
 void ax_wdt_feed() {}
 
 #endif
-#endif // ESP8266
+#endif

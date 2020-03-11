@@ -56,6 +56,7 @@ AsyncWebServerRequest::AsyncWebServerRequest(AsyncWebServer* s, AsyncClient* c)
   , _parsedLength(0)
   , _headers(LinkedList<AsyncWebHeader *>([](AsyncWebHeader *h){ delete h; }))
   , _params(LinkedList<AsyncWebParameter *>([](AsyncWebParameter *p){ delete p; }))
+  , _pathParams(LinkedList<String *>([](String *p){ delete p; }))
   , _multiParseState(0)
   , _boundaryPosition(0)
   , _itemStartIndex(0)
@@ -69,18 +70,19 @@ AsyncWebServerRequest::AsyncWebServerRequest(AsyncWebServer* s, AsyncClient* c)
   , _itemIsFile(false)
   , _tempObject(NULL)
 {
-  c->onError([](void *r, AsyncClient* c, int8_t error){ AsyncWebServerRequest *req = (AsyncWebServerRequest*)r; req->_onError(error); }, this);
-  c->onAck([](void *r, AsyncClient* c, size_t len, uint32_t time){ AsyncWebServerRequest *req = (AsyncWebServerRequest*)r; req->_onAck(len, time); }, this);
+  c->onError([](void *r, AsyncClient* c, int8_t error){ (void)c; AsyncWebServerRequest *req = (AsyncWebServerRequest*)r; req->_onError(error); }, this);
+  c->onAck([](void *r, AsyncClient* c, size_t len, uint32_t time){ (void)c; AsyncWebServerRequest *req = (AsyncWebServerRequest*)r; req->_onAck(len, time); }, this);
   c->onDisconnect([](void *r, AsyncClient* c){ AsyncWebServerRequest *req = (AsyncWebServerRequest*)r; req->_onDisconnect(); delete c; }, this);
-  c->onTimeout([](void *r, AsyncClient* c, uint32_t time){ AsyncWebServerRequest *req = (AsyncWebServerRequest*)r; req->_onTimeout(time); }, this);
-  c->onData([](void *r, AsyncClient* c, void *buf, size_t len){ AsyncWebServerRequest *req = (AsyncWebServerRequest*)r; req->_onData(buf, len); }, this);
-  c->onPoll([](void *r, AsyncClient* c){ AsyncWebServerRequest *req = (AsyncWebServerRequest*)r; req->_onPoll(); }, this);
+  c->onTimeout([](void *r, AsyncClient* c, uint32_t time){ (void)c; AsyncWebServerRequest *req = (AsyncWebServerRequest*)r; req->_onTimeout(time); }, this);
+  c->onData([](void *r, AsyncClient* c, void *buf, size_t len){ (void)c; AsyncWebServerRequest *req = (AsyncWebServerRequest*)r; req->_onData(buf, len); }, this);
+  c->onPoll([](void *r, AsyncClient* c){ (void)c; AsyncWebServerRequest *req = ( AsyncWebServerRequest*)r; req->_onPoll(); }, this);
 }
 
 AsyncWebServerRequest::~AsyncWebServerRequest(){
   _headers.free();
 
   _params.free();
+  _pathParams.free();
 
   _interestingHeaders.free();
 
@@ -98,7 +100,7 @@ AsyncWebServerRequest::~AsyncWebServerRequest(){
 }
 
 void AsyncWebServerRequest::_onData(void *buf, size_t len){
-  int i = 0;
+  size_t i = 0;
   while (true) {
 
   if(_parseState < PARSE_REQ_BODY){
@@ -128,12 +130,18 @@ void AsyncWebServerRequest::_onData(void *buf, size_t len){
       }
     }
   } else if(_parseState == PARSE_REQ_BODY){
+    // A handler should be already attached at this point in _parseLine function.
+    // If handler does nothing (_onRequest is NULL), we don't need to really parse the body.
+    const bool needParse = _handler && !_handler->isRequestHandlerTrivial();
     if(_isMultipart){
-      size_t i;
-      for(i=0; i<len; i++){
-        _parseMultipartPostByte(((uint8_t*)buf)[i], i == len - 1);
-        _parsedLength++;
-      }
+      if(needParse){
+        size_t i;
+        for(i=0; i<len; i++){
+          _parseMultipartPostByte(((uint8_t*)buf)[i], i == len - 1);
+          _parsedLength++;
+        }
+      } else
+          _parsedLength += len;
     } else {
       if(_parsedLength == 0){
         if(_contentType.startsWith("application/x-www-form-urlencoded")){
@@ -150,12 +158,14 @@ void AsyncWebServerRequest::_onData(void *buf, size_t len){
         //check if authenticated before calling the body
         if(_handler) _handler->handleBody(this, (uint8_t*)buf, len, _parsedLength, _contentLength);
         _parsedLength += len;
-      } else {
+      } else if(needParse) {
         size_t i;
         for(i=0; i<len; i++){
           _parsedLength++;
           _parsePlainPostChar(((uint8_t*)buf)[i]);
         }
+      } else {
+        _parsedLength += len;
       }
     }
     if(_parsedLength == _contentLength){
@@ -199,21 +209,33 @@ void AsyncWebServerRequest::_onAck(size_t len, uint32_t time){
 }
 
 void AsyncWebServerRequest::_onError(int8_t error){
-
+  (void)error;
 }
 
 void AsyncWebServerRequest::_onTimeout(uint32_t time){
-  os_printf("TIMEOUT: %u, state: %s\n", time, _client->stateToString());
+  (void)time;
+  //os_printf("TIMEOUT: %u, state: %s\n", time, _client->stateToString());
   _client->close();
+}
+
+void AsyncWebServerRequest::onDisconnect (ArDisconnectHandler fn){
+    _onDisconnectfn=fn;
 }
 
 void AsyncWebServerRequest::_onDisconnect(){
   //os_printf("d\n");
+  if(_onDisconnectfn) {
+      _onDisconnectfn();
+    }
   _server->_handleDisconnect(this);
 }
 
 void AsyncWebServerRequest::_addParam(AsyncWebParameter *p){
   _params.add(p);
+}
+
+void AsyncWebServerRequest::_addPathParam(const char *p){
+  _pathParams.add(new String(p));
 }
 
 void AsyncWebServerRequest::_addGetParams(const String& params){
@@ -296,13 +318,11 @@ bool AsyncWebServerRequest::_parseReqHeader(){
     if(name.equalsIgnoreCase("Host")){
       _host = value;
     } else if(name.equalsIgnoreCase("Content-Type")){
+	  _contentType = value.substring(0, value.indexOf(';'));
       if (value.startsWith("multipart/")){
         _boundary = value.substring(value.indexOf('=')+1);
         _boundary.replace("\"","");
-        _contentType = value.substring(0, value.indexOf(';'));
         _isMultipart = true;
-      } else {
-        _contentType = value;
       }
     } else if(name.equalsIgnoreCase("Content-Length")){
       _contentLength = atoi(value.c_str());
@@ -506,7 +526,7 @@ void AsyncWebServerRequest::_parseMultipartPostByte(uint8_t data, bool last){
     }
   } else if(_multiParseState == DASH3_OR_RETURN2){
     if(data == '-' && (_contentLength - _parsedLength - 4) != 0){
-      os_printf("ERROR: The parser got to the end of the POST but is expecting %u bytes more!\nDrop an issue so we can have more info on the matter!\n", _contentLength - _parsedLength - 4);
+      //os_printf("ERROR: The parser got to the end of the POST but is expecting %u bytes more!\nDrop an issue so we can have more info on the matter!\n", _contentLength - _parsedLength - 4);
       _contentLength = _parsedLength + 4;//lets close the request gracefully
     }
     if(data == '\r'){
@@ -880,7 +900,7 @@ const String& AsyncWebServerRequest::arg(const __FlashStringHelper * data) const
   size_t n = strlen_P(p);
   char * name = (char*) malloc(n+1);
   if (name) {
-    strcpy(name, p);   
+    strcpy_P(name, p);
     const String & result = arg( String(name) ); 
     free(name); 
     return result; 
@@ -896,6 +916,11 @@ const String& AsyncWebServerRequest::arg(size_t i) const {
 
 const String& AsyncWebServerRequest::argName(size_t i) const {
   return getParam(i)->name();
+}
+
+const String& AsyncWebServerRequest::pathArg(size_t i) const {
+  auto param = _pathParams.nth(i);
+  return param ? **param : SharedEmptyString;
 }
 
 const String& AsyncWebServerRequest::header(const char* name) const {
@@ -982,4 +1007,4 @@ bool AsyncWebServerRequest::isExpectedRequestedConnType(RequestedConnectionType 
     if ((erct3 != RCT_NOT_USED) && (erct3 == _reqconntype)) res = true;
     return res;
 }
-#endif //ESP8266
+#endif

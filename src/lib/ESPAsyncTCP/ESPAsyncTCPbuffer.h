@@ -21,12 +21,13 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+
 #ifdef ESP8266
 #ifndef ESPASYNCTCPBUFFER_H_
 #define ESPASYNCTCPBUFFER_H_
 
 //#define DEBUG_ASYNC_TCP(...)  while(((U0S >> USTXC) & 0x7F) != 0x00); os_printf( __VA_ARGS__ ); while(((U0S >> USTXC) & 0x7F) != 0x00)
-
+//#define DEBUG_ASYNC_TCP ASYNC_TCP_DEBUG
 #ifndef DEBUG_ASYNC_TCP
 #define DEBUG_ASYNC_TCP(...)
 #endif
@@ -116,4 +117,4 @@ class AsyncTCPbuffer: public Print {
 };
 
 #endif /* ESPASYNCTCPBUFFER_H_ */
-#endif // ESP8266
+#endif

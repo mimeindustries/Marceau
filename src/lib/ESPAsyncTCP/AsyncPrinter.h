@@ -18,6 +18,7 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
+
 #ifdef ESP8266
 #ifndef ASYNCPRINTER_H_
 #define ASYNCPRINTER_H_
@@ -46,7 +47,7 @@ class AsyncPrinter: public Print {
     AsyncPrinter *next;
 
     AsyncPrinter();
-    AsyncPrinter(AsyncClient *client, size_t txBufLen = 1460);
+    AsyncPrinter(AsyncClient *client, size_t txBufLen = TCP_MSS);
     virtual ~AsyncPrinter();
 
     int connect(IPAddress ip, uint16_t port);
@@ -71,4 +72,4 @@ class AsyncPrinter: public Print {
 };
 
 #endif /* ASYNCPRINTER_H_ */
-#endif // ESP8266
+#endif

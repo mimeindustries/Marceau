@@ -22,6 +22,7 @@
  * Compatibility for AxTLS with LWIP raw tcp mode (http://lwip.wikia.com/wiki/Raw/TCP)
  * Original Code and Inspiration: Slavey Karadzhov
  */
+
 #ifdef ESP8266
 #ifndef LWIPR_COMPAT_H
 #define LWIPR_COMPAT_H
@@ -40,6 +41,7 @@
 extern "C" {
 #endif
 
+#include "stdbool.h"
 #include "include/ssl.h"
 
 #define ERR_TCP_SSL_INVALID_SSL           -101
@@ -95,4 +97,5 @@ bool tcp_ssl_has(struct tcp_pcb *tcp);
 #endif /* ASYNC_TCP_SSL_ENABLED */
 
 #endif /* LWIPR_COMPAT_H */
-#endif // ESP8266
+
+#endif /* ESP8266 */

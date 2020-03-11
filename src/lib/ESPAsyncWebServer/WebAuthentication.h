@@ -18,12 +18,12 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
-#ifdef ESP8266
 
+#ifdef ESP8266
 #ifndef WEB_AUTHENTICATION_H_
 #define WEB_AUTHENTICATION_H_
 
-#include "Arduino.h"
+#include <Arduino.h>
 
 bool checkBasicAuthentication(const char * header, const char * username, const char * password);
 String requestDigestAuthentication(const char * realm);
@@ -33,4 +33,4 @@ bool checkDigestAuthentication(const char * header, const char * method, const c
 String generateDigestHash(const char * username, const char * password, const char * realm);
 
 #endif
-#endif //ESP8266
+#endif
