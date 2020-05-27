@@ -1,5 +1,5 @@
-#ifndef __MirobotWebSocket_h__
-#define __MirobotWebSocket_h__
+#ifndef __MarceauWebSocket_h__
+#define __MarceauWebSocket_h__
 
 #include "Arduino.h"
 #include <ESP8266WiFi.h>
