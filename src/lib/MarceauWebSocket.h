@@ -2,19 +2,8 @@
 #define __MirobotWebSocket_h__
 
 #include "Arduino.h"
-#include <ESP8266WiFi.h>
-#include <WiFiClient.h>
-#include "lib/ESPAsyncTCP/ESPAsyncTCP.h"
-#include "lib/ESPAsyncWebServer/ESPAsyncWebServer.h"
-#include "lib/ArduinoJson/ArduinoJson.h"
 
-#ifdef AVR
-#define JSON_BUFFER_LENGTH 128
-#endif //AVR
-
-#ifdef ESP8266
-#define JSON_BUFFER_LENGTH 512
-#endif //ESP8266
+// See MarceauWeb.h for why ESPAsyncWebServer isn't included here.
 
 typedef void (* dataHandler) (char *);
 
@@ -22,7 +11,8 @@ class MarceauWebSocket {
   public:
     void begin();
     void onMsg(dataHandler h);
-    static void sendWebSocketMsg(ArduinoJson::JsonObject &);
+    static bool hasClients();
+    static void sendText(const char *text, size_t len);
 };
 
 #endif

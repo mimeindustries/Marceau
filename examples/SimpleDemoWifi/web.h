@@ -1,4 +1,3 @@
-#ifdef ESP8266
 
 #include <lib/webFiles.h>
 
@@ -8,5 +7,3 @@ t_webfiles webFiles[] = {
   {.filename = "/index.html", .mime = "text/html", .len = 130180, .content = &index_html[0]},
   {.filename = "/favicon.ico", .mime = "image/x-icon", .len = 1078, .content = &favicon_ico[0]}};
 uint8_t webFileCount = 2;
-
-#endif

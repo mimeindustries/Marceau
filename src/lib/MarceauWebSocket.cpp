@@ -1,6 +1,13 @@
-#ifdef ESP8266
 #include "Arduino.h"
 #include "MarceauWebSocket.h"
+#ifdef ESP8266
+  #include <ESP8266WiFi.h>
+#endif
+#ifdef ESP32
+  #include <WiFi.h>
+#endif
+// ESP32Async/ESPAsyncWebServer (pulls in AsyncTCP or ESPAsyncTCP itself)
+#include <ESPAsyncWebServer.h>
 
 AsyncWebServer wsServer(8899);
 AsyncWebSocket ws("/websocket");
@@ -14,7 +21,8 @@ void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventTyp
     if(info->final && info->index == 0 && info->len == len){
       //the whole message is in a single frame and we got all of it's data
       if(info->opcode == WS_TEXT){
-        data[len] = 0;        
+        // ESPAsyncWebServer null-terminates text frame data for us (and
+        // writing data[len] ourselves would be past the end of the buffer)
         if(handler) handler((char *)data);
       }
     }
@@ -31,10 +39,10 @@ void MarceauWebSocket::onMsg(dataHandler h){
   handler = h;
 }
 
-void MarceauWebSocket::sendWebSocketMsg(ArduinoJson::JsonObject &msg){
-  char jsonBuff[JSON_BUFFER_LENGTH];
-  msg.printTo(jsonBuff, sizeof(jsonBuff));
-  ws.textAll(jsonBuff, strlen(jsonBuff));
+bool MarceauWebSocket::hasClients(){
+  return ws.count() > 0;
 }
 
-#endif
+void MarceauWebSocket::sendText(const char *text, size_t len){
+  ws.textAll(text, len);
+}

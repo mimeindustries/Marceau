@@ -1,5 +1,3 @@
-#ifdef ESP8266
-
 static void _getConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
   m->getConfig(inJson, outJson);
 }
@@ -19,7 +17,16 @@ void Marceau<CMD_COUNT>::getConfig(ArduinoJson::JsonObject &inJson, ArduinoJson:
   msg["sta_ip"] = MarceauWifi::getStaIp().toString();
   msg["ap_ssid"] = settings.ap_ssid;
   msg["ap_encrypted"] = !!strlen(settings.ap_pass);
-  msg["wifi_mode"] = modes[MarceauWifi::getWifiMode()];
+  // msg["wifi_mode"] = modes[MarceauWifi::getWifiMode()];
+}
+
+// Copy a JSON string value into a fixed-size buffer, ignoring non-strings and
+// truncating anything too long so it can't overrun the settings struct
+static void copyJsonString(char *dest, size_t destLen, ArduinoJson::JsonVariant val){
+  const char *src = val.as<const char*>();
+  if(src == NULL) return;
+  strncpy(dest, src, destLen - 1);
+  dest[destLen - 1] = 0;
 }
 
 static void _setConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
@@ -33,19 +40,19 @@ void Marceau<CMD_COUNT>::setConfig(ArduinoJson::JsonObject &inJson, ArduinoJson:
 
   // Set the SSID to connect to
   if(inJson["arg"].asObject().containsKey("sta_ssid")){
-    strcpy(settings.sta_ssid, inJson["arg"]["sta_ssid"]);
+    copyJsonString(settings.sta_ssid, sizeof(settings.sta_ssid), inJson["arg"]["sta_ssid"]);
   }
   // Set the password for the SSID
   if(inJson["arg"].asObject().containsKey("sta_pass")){
-    strcpy(settings.sta_pass, inJson["arg"]["sta_pass"]);
+    copyJsonString(settings.sta_pass, sizeof(settings.sta_pass), inJson["arg"]["sta_pass"]);
   }
   // Change the name of the built in access point
   if(inJson["arg"].asObject().containsKey("ap_ssid")){
-    strcpy(settings.ap_ssid, inJson["arg"]["ap_ssid"]);
+    copyJsonString(settings.ap_ssid, sizeof(settings.ap_ssid), inJson["arg"]["ap_ssid"]);
   }
   // Set the password for the access point
   if(inJson["arg"].asObject().containsKey("ap_pass")){
-    strcpy(settings.ap_pass, inJson["arg"]["ap_pass"]);
+    copyJsonString(settings.ap_pass, sizeof(settings.ap_pass), inJson["arg"]["ap_pass"]);
   }
   // Set whether to use DHCP
   if(inJson["arg"].asObject().containsKey("sta_dhcp")){
@@ -76,7 +83,8 @@ void Marceau<CMD_COUNT>::setConfig(ArduinoJson::JsonObject &inJson, ArduinoJson:
     addr.fromString(inJson["arg"]["sta_fixeddns2"].asString());
     settings.sta_fixeddns2 = addr;
   }
-  wifi.setupWifi();
+  // Only touch the WiFi if it has been started (wifi.settings is NULL otherwise)
+  if(wifiEnabled) wifi.setupWifi();
   saveSettings();
 }
 
@@ -97,7 +105,6 @@ static void _startWifiScan(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObj
 static void _freeHeap(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
   outJson["msg"] = ESP.getFreeHeap();
 }
-#endif //ESP8266
 
 static void _uptime(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson){
   outJson["msg"] = millis();

@@ -2,6 +2,13 @@ template <int CMD_COUNT>
 CmdProcessor<CMD_COUNT>::CmdProcessor(){
   this->in_process = false;
   current_id[0] = 0;
+  tcom = 0;
+  // cmd_counter and outputHandlers are deliberately NOT reset here. Sketches
+  // register commands from other global objects' constructors (e.g. ArtieMax),
+  // and C++ doesn't define whether those run before or after this one. A
+  // global Marceau is zero-initialised before any constructor runs, so they
+  // start at 0/NULL anyway; resetting them here would wipe commands that were
+  // already added. This means Marceau must be a global (or static) object.
 }
 
 template <int CMD_COUNT>
@@ -32,21 +39,24 @@ boolean CmdProcessor<CMD_COUNT>::processMsg(char * msg){
   const char* cmd;
   const char* id;
   int cmd_num, i;
-  StaticJsonBuffer<JSON_BUFFER_LENGTH> incomingBuffer;
-  StaticJsonBuffer<JSON_BUFFER_LENGTH> outgoingBuffer;
+  // Heap rather than a 2KB stack buffer: the ESP8266 loop stack is only 4KB
+  DynamicJsonBuffer incomingBuffer(256);
+  DynamicJsonBuffer outgoingBuffer;
   JsonObject& outMsg = outgoingBuffer.createObject();
   
   JsonObject& inMsg = incomingBuffer.parseObject(msg);
   if(inMsg.success()){
     // Extract the command
-    if(!inMsg.containsKey("cmd")) return false;
-    cmd = inMsg["cmd"];
+    // Extract the ID (must be a string; anything else is treated as no ID)
+    id = inMsg["id"].as<const char*>();
+    if(id == NULL) id = "";
 
-    // Extract the ID
-    if(inMsg.containsKey("id")){
-      id = inMsg["id"];
-    }else{
-      id = "";
+    // Extract the command (must be a string)
+    cmd = inMsg["cmd"].as<const char*>();
+    if(cmd == NULL){
+      outMsg["msg"] = "No cmd";
+      sendResponse("error", outMsg, *id);
+      return true;
     }
 
     // Find the command
@@ -69,8 +79,11 @@ boolean CmdProcessor<CMD_COUNT>::processMsg(char * msg){
           outMsg["msg"] = "Previous command not finished";
           sendResponse("error", outMsg, *id);
         }else{
+          // Copy the ID before running the command: the command may use outMsg
+          // and the id is truncated to fit current_id
+          strncpy(current_id, id, sizeof(current_id) - 1);
+          current_id[sizeof(current_id) - 1] = 0;
           (_cmds[cmd_num].func)(inMsg, outMsg);
-          strcpy(current_id, (char*)id);
           in_process = true;
           sendResponse("accepted", outMsg, *id);
         }
@@ -89,14 +102,28 @@ boolean CmdProcessor<CMD_COUNT>::processMsg(char * msg){
 }
 
 template <int CMD_COUNT>
-void CmdProcessor<CMD_COUNT>::sendComplete(){
+unsigned long CmdProcessor<CMD_COUNT>::sendComplete(){
   if(in_process){
     in_process = false;
-    StaticJsonBuffer<60> outBuffer;
+    StaticJsonBuffer<128> outBuffer;
     JsonObject& outMsg = outBuffer.createObject();
     sendResponse("complete", outMsg, *current_id);
+    tcom = millis();
   }
+ return tcom;
 }
+
+template <int CMD_COUNT>
+void CmdProcessor<CMD_COUNT>::sendError(const char* msg) {
+  StaticJsonBuffer<128> outBuffer;
+  JsonObject& outMsg = outBuffer.createObject();
+  outMsg["msg"] = msg;
+  sendResponse("error", outMsg, (const char &)"");
+
+}
+
+   
+
 
 template <int CMD_COUNT>
 void CmdProcessor<CMD_COUNT>::sendResponse(const char status[], ArduinoJson::JsonObject &outMsg, const char &id){

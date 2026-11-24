@@ -7,13 +7,7 @@
 
 #define OUTPUT_HANDLER_COUNT 2
 
-#ifdef AVR
-#define JSON_BUFFER_LENGTH 128
-#endif //AVR
-
-#ifdef ESP8266
-#define JSON_BUFFER_LENGTH 512
-#endif //ESP8266
+#define JSON_BUFFER_LENGTH 2048
 
 typedef void (* Fn) (ArduinoJson::JsonObject &, ArduinoJson::JsonObject &);
 typedef void (* jsonMsgHandler) (ArduinoJson::JsonObject &);
@@ -32,7 +26,9 @@ class CmdProcessor {
     bool addOutputHandler(jsonMsgHandler);
     void process();
     void notify(const char[], ArduinoJson::JsonObject &);
-    void sendComplete();
+    unsigned long sendComplete();
+    unsigned long tcom;
+    void sendError(const char* msg);
     boolean processMsg(char * msg);
     int cmdCount();
     char * getCmdName(int);

@@ -2,13 +2,16 @@
 #define __MarceauWifi_h__
 
 #include "Arduino.h"
-#include <ESP8266WiFi.h>
-#include <WiFiClient.h>
-#include "lib/MarceauWeb.h"
-#include "lib/MarceauWebSocket.h"
+#ifdef ESP8266
+  #include <ESP8266WiFi.h>
+  #include "WiFiClient.h"
+#endif
+#ifdef ESP32
+  #include "WiFi.h"
+#endif
 #include "lib/MarceauSettings.h"
-#include <DNSServer.h>
-#include <Ticker.h>
+#include "DNSServer.h"
+#include "Ticker.h"
 #include "lib/ArduinoJson/ArduinoJson.h"
 
 typedef void (* dataHandler) (char *);
@@ -19,28 +22,32 @@ class MarceauWifi {
   public:
     MarceauWifi();
     static MarceauSettings * settings;
-    static bool online;
-    static bool networkChanged;
+    // Written from the WiFi event task, read from loop()
+    static volatile bool online;
+    static volatile bool networkChanged;
     static bool wifiScanReady;
     void begin(MarceauSettings *);
     void loop();
     void defaultAPName(char*);
     static IPAddress getStaIp();
     static int32_t getStaRSSI();
-    static WiFiMode getWifiMode();
+    
+    #ifdef ESP8266
+      static WiFiMode getWifiMode();
+    #endif
+    
     static void startWifiScan();
     void setupWifi();
     int getWifiScanData(ArduinoJson::JsonArray &, int);
-    void setHostname(char * hostname);
-    void setDefaultAPName(char * apname);
+    void setHostname(const char * hostname);
+    void setDefaultAPName(const char * apname);
   private:
     bool enabled;
-    char * hostname;
-    char * _defaultAPName;
+    const char * hostname;
+    const char * _defaultAPName;
     static bool wifiScanRequested;
     DNSServer dnsServer;
     void setupDNS();
     static void staCheck();
 };
-
 #endif
