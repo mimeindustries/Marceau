@@ -60,6 +60,21 @@ class Marceau: public MarceauBase{
     virtual void setConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson);
     virtual void resetConfig(ArduinoJson::JsonObject &inJson, ArduinoJson::JsonObject &outJson);
     void saveSettings();
+
+    // Device settings: an EEPROM area straight after Marceau's own settings
+    // for the product's own data (MeArm joint limits, Mirobot calibration...).
+    // It starts where Mirobot already keeps its settings, so existing devices
+    // keep their data. Marceau's own settings never move or overwrite it.
+    // Call reserveDeviceSettings() before begin() so EEPROM is sized to fit.
+    void reserveDeviceSettings(uint16_t bytes);
+    uint16_t deviceSettingsOffset();
+    uint16_t deviceSettingsSize();
+    // Helpers that store a block with 2 magic bytes and a version byte in
+    // front, so a block that was never saved, or was saved by another layout,
+    // is ignored. They need bytes + 3 reserved. load returns false (and
+    // leaves data untouched) when nothing valid is stored.
+    bool loadDeviceSettings(void *data, uint16_t bytes, uint8_t version);
+    bool saveDeviceSettings(const void *data, uint16_t bytes, uint8_t version);
     void sendError(const char* msg) { p.sendError(msg); }
     long lastCommand();
 
@@ -97,6 +112,7 @@ class Marceau: public MarceauBase{
     MarceauWeb webServer;
     MarceauWebSocket socketServer;
     bool penflag;
+    uint16_t deviceSettingsBytes;
 
 };
 

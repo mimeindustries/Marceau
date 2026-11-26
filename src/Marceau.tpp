@@ -28,6 +28,7 @@ Marceau<CMD_COUNT>::Marceau(){
   serialEnabled = false;
   m = this;
   wifiEnabled = false;
+  deviceSettingsBytes = 0;
   _s = NULL;
   last_char = 0;
   last_command = 0;
@@ -173,8 +174,9 @@ void Marceau<CMD_COUNT>::resetSettings(){
 
 template <uint8_t CMD_COUNT>
 void Marceau<CMD_COUNT>::initSettings(){
-  // The settings are stored after the two magic bytes, so reserve room for them too
-  EEPROM.begin(EEPROM_OFFSET + 2 + sizeof(MarceauSettings));
+  // The settings are stored after the two magic bytes, so reserve room for
+  // them too, plus any device settings area the sketch asked for
+  EEPROM.begin(EEPROM_OFFSET + 2 + sizeof(MarceauSettings) + deviceSettingsBytes);
 
 
   if(EEPROM.read(EEPROM_OFFSET) == MAGIC_BYTE_1 && EEPROM.read(EEPROM_OFFSET + 1) == MAGIC_BYTE_2 && EEPROM.read(EEPROM_OFFSET + 2) == SETTINGS_VERSION){
@@ -190,6 +192,47 @@ void Marceau<CMD_COUNT>::initSettings(){
   }
   // Either this is the first boot, am updated settings version, or the settings are bad so let's reset them
   resetSettings();
+}
+
+template <uint8_t CMD_COUNT>
+void Marceau<CMD_COUNT>::reserveDeviceSettings(uint16_t bytes){
+  deviceSettingsBytes = bytes;
+}
+
+template <uint8_t CMD_COUNT>
+uint16_t Marceau<CMD_COUNT>::deviceSettingsOffset(){
+  return EEPROM_OFFSET + 2 + sizeof(MarceauSettings);
+}
+
+template <uint8_t CMD_COUNT>
+uint16_t Marceau<CMD_COUNT>::deviceSettingsSize(){
+  return deviceSettingsBytes;
+}
+
+template <uint8_t CMD_COUNT>
+bool Marceau<CMD_COUNT>::loadDeviceSettings(void *data, uint16_t bytes, uint8_t version){
+  if(bytes + 3 > deviceSettingsBytes) return false;
+  uint16_t o = deviceSettingsOffset();
+  if(EEPROM.read(o) != MAGIC_BYTE_1 || EEPROM.read(o + 1) != MAGIC_BYTE_2 || EEPROM.read(o + 2) != version){
+    return false;
+  }
+  for(uint16_t t = 0; t < bytes; t++){
+    ((uint8_t*)data)[t] = EEPROM.read(o + 3 + t);
+  }
+  return true;
+}
+
+template <uint8_t CMD_COUNT>
+bool Marceau<CMD_COUNT>::saveDeviceSettings(const void *data, uint16_t bytes, uint8_t version){
+  if(bytes + 3 > deviceSettingsBytes) return false;
+  uint16_t o = deviceSettingsOffset();
+  EEPROM.write(o, MAGIC_BYTE_1);
+  EEPROM.write(o + 1, MAGIC_BYTE_2);
+  EEPROM.write(o + 2, version);
+  for(uint16_t t = 0; t < bytes; t++){
+    EEPROM.write(o + 3 + t, ((const uint8_t*)data)[t]);
+  }
+  return EEPROM.commit();
 }
 
 template <uint8_t CMD_COUNT>

@@ -97,6 +97,28 @@ The filesystem is **LittleFS** on both ESP32 and ESP8266. Earlier versions used 
    esptool --chip esp32 --port COM5 write-flash 0x210000 littlefs.bin
    ```
 
+### Device settings (EEPROM)
+
+Marceau keeps its own settings (WiFi details and the shared calibration fields) at the start of EEPROM. A
+sketch can ask for extra space straight after them for the product's own settings:
+
+```cpp
+struct MySettings { float limits[4][2]; } mine;
+
+marcel.reserveDeviceSettings(sizeof(mine) + 3);   // before begin(): +3 for the helpers' header
+marcel.begin();
+if(!marcel.loadDeviceSettings(&mine, sizeof(mine), 1)){
+  // Nothing saved yet, or saved with another version: use defaults
+}
+...
+marcel.saveDeviceSettings(&mine, sizeof(mine), 1);
+```
+
+ * **Header:** the helpers store 2 magic bytes and the version byte in front of the data. A block that was never saved, or was saved under another version number, isn't loaded. Raise the version when the layout of your structure changes.
+ * **Location:** the area starts at `deviceSettingsOffset()`, which is `2 + sizeof(MarceauSettings)`. Mirobot already keeps its settings there, so Mirobot devices keep their data, and products that don't reserve space behave as before. Marceau's own settings, and `resetConfig`, never touch the area.
+ * **If `MarceauSettings` changes size,** the area moves with it, so saved device settings fail their check and go back to defaults once.
+ * **Size:** EEPROM is one 4KB flash sector on ESP8266, and Marceau's own settings use about 350 bytes of it.
+
 Changes in 0.1.0
 ----------------
 
@@ -108,6 +130,7 @@ Changes that affect existing sketches:
  * **`setHostname()`, `setDefaultAPName()` and `notify()` take `const char *`**, so string literals can be passed directly.
  * **Serial replies go to the stream passed to `enableSerial()`**, rather than always to `Serial`.
  * **`webFileCount` must be declared `uint8_t`.** Marceau used to read it as an `int`.
+ * **Device settings area:** `reserveDeviceSettings()`, `loadDeviceSettings()` and `saveDeviceSettings()` give a product its own EEPROM space after Marceau's settings (see above).
  * **ESP32 Arduino core 3.x** is supported as well as 2.x, and **ESP8266** is supported.
 
 Fixes:
